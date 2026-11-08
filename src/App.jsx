@@ -138,8 +138,6 @@ const evaluateFillAnswer = (userAnswer, correctName) => {
   const cleanCorrect = correctName.trim().toLowerCase();
   
   if (cleanUser === cleanCorrect) return true;
-  // Check if the core correct bone name is a distinct word/part within user's input
-  // e.g., correct = "frontal", user = "frontal bone" or "left frontal"
   const regex = new RegExp(`\\b${cleanCorrect}\\b`, 'i');
   return regex.test(cleanUser);
 };
@@ -157,17 +155,17 @@ export default function App() {
   const [scoreHistory, setScoreHistory] = useState([]);
 
   // Setup Quiz States
-  const [setupStep, setSetupStep] = useState(1); // 1: เลือกรูปแบบ, 2: เลือกหมวดหมู่
-  const [examMode, setExamMode] = useState('mcq'); // 'mcq', 'fill', 'matching'
+  const [setupStep, setSetupStep] = useState(1);
+  const [examMode, setExamMode] = useState('mcq');
   const [quizCategory, setQuizCategory] = useState('Head');
 
   const [quizPool, setQuizPool] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [options, setOptions] = useState([]);
-  const [answersMap, setAnswersMap] = useState({}); // questionIndex -> chosenValue
+  const [questionOptionsMap, setQuestionOptionsMap] = useState({}); // questionIndex -> options array (locked)
+  const [answersMap, setAnswersMap] = useState({});
   const [matchingPairs, setMatchingPairs] = useState({ bones: [], names: [] });
   const [matchingSelectedBone, setMatchingSelectedBone] = useState(null);
-  const [matchingUserAnswers, setMatchingUserAnswers] = useState({}); // boneId -> nameEn
+  const [matchingUserAnswers, setMatchingUserAnswers] = useState({});
 
   const [quizStartTime, setQuizStartTime] = useState(null);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -177,8 +175,8 @@ export default function App() {
   const [showUnansweredWarning, setShowUnansweredWarning] = useState(false);
   const [imageLoadFailed, setImageLoadFailed] = useState({});
 
-  // Review expanded state
-  const [selectedReviewItem, setSelectedReviewItem] = useState(null);
+  // Review expanded state (inline per question index)
+  const [expandedReviewIndex, setExpandedReviewIndex] = useState(null);
 
   useEffect(() => {
     if (!auth) return;
@@ -233,9 +231,9 @@ export default function App() {
     return () => clearInterval(timer);
   }, [screen, quizStartTime]);
 
-  const generateOptionsForQuestion = (correctBone) => {
-    const wrongCandidates = BONE_DATA.filter(
-      (b) => b.category.trim() === correctBone.category.trim() && b.id !== correctBone.id
+  const generateOptionsForQuestion = (correctBone, qIndex, poolOfBones) => {
+    const wrongCandidates = poolOfBones.filter(
+      (b) => b.id !== correctBone.id
     );
     const pool = [...wrongCandidates];
     for (let i = pool.length - 1; i > 0; i--) {
@@ -247,7 +245,10 @@ export default function App() {
       const j = Math.floor(Math.random() * (i + 1));
       [fourChoices[i], fourChoices[j]] = [fourChoices[j], fourChoices[i]];
     }
-    setOptions(fourChoices);
+    setQuestionOptionsMap((prev) => ({
+      ...prev,
+      [qIndex]: fourChoices
+    }));
   };
 
   const handleStartQuizSession = () => {
@@ -257,11 +258,13 @@ export default function App() {
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
 
-    const finalPool = examMode === 'matching' ? pool.slice(0, 5) : pool;
+    const finalPool = examMode === 'matching' ? pool.slice(0, Math.min(5, pool.length)) : pool;
 
     setQuizPool(finalPool);
     setCurrentIndex(0);
     setAnswersMap({});
+    setQuestionOptionsMap({});
+
     if (examMode === 'matching') {
       setMatchingPairs({
         bones: [...finalPool],
@@ -270,7 +273,23 @@ export default function App() {
       setMatchingUserAnswers({});
       setMatchingSelectedBone(null);
     } else if (finalPool.length > 0) {
-      generateOptionsForQuestion(finalPool[0]);
+      // Pre-generate and lock options for all MCQ questions
+      const newOptsMap = {};
+      finalPool.forEach((bone, idx) => {
+        const wrongCandidates = finalPool.filter((b) => b.id !== bone.id);
+        const subPool = [...wrongCandidates];
+        for (let i = subPool.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [subPool[i], subPool[j]] = [subPool[j], subPool[i]];
+        }
+        const fourChoices = [bone, ...subPool.slice(0, 3)];
+        for (let i = fourChoices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [fourChoices[i], fourChoices[j]] = [fourChoices[j], fourChoices[i]];
+        }
+        newOptsMap[idx] = fourChoices;
+      });
+      setQuestionOptionsMap(newOptsMap);
     }
 
     setShowEarlyExitModal(false);
@@ -324,7 +343,8 @@ export default function App() {
           chosenNameEn: chosen || 'No Answer',
           isCorrect,
           imageUrl: bone.imageUrl,
-          num: bone.num
+          num: bone.num,
+          options: matchingPairs.names.map(n => ({ id: n.id, nameEn: n.nameEn }))
         });
       });
     } else {
@@ -347,7 +367,8 @@ export default function App() {
           chosenNameEn: chosenText,
           isCorrect,
           imageUrl: bone.imageUrl,
-          num: bone.num
+          num: bone.num,
+          options: questionOptionsMap[idx] || []
         });
       });
     }
@@ -390,12 +411,13 @@ export default function App() {
       firstAttemptTotal,
       durationSec,
       timestamp: timestampStr,
+      examMode,
       details: finalAnswers,
       mistakes: finalAnswers.filter((a) => !a.isCorrect),
     };
 
     setLatestResultRecord(newRecord);
-    setSelectedReviewItem(null);
+    setExpandedReviewIndex(null);
     setScreen('quiz-result');
 
     if (user && db) {
@@ -411,9 +433,6 @@ export default function App() {
 
   const handleJumpToQuestion = (idx) => {
     setCurrentIndex(idx);
-    if (examMode === 'mcq' && quizPool[idx]) {
-      generateOptionsForQuestion(quizPool[idx]);
-    }
   };
 
   const handleCopySlipText = async (record) => {
@@ -947,36 +966,93 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* DETAILED QUESTION REVIEW */}
+                {/* DETAILED QUESTION REVIEW INLINE EXPANDABLE */}
                 <div className="space-y-3 pt-2">
-                  <h3 className="text-sm font-extrabold text-[#2C2623]">ผลการทำข้อสอบรายข้อ (คลิกเพื่อดูรายละเอียด):</h3>
-                  <div className="space-y-2">
-                    {latestResultRecord.details?.map((item, idx) => (
-                      <div
-                        key={idx}
-                        onClick={() => setSelectedReviewItem(item)}
-                        className={`p-4 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
-                          item.isCorrect ? 'bg-[#EBF5EE] border-[#3B7A57]' : 'bg-[#FCEEEE] border-[#C94A4A]'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-extrabold text-white ${
-                            item.isCorrect ? 'bg-[#3B7A57]' : 'bg-[#C94A4A]'
-                          }`}>
-                            {idx + 1}
-                          </span>
-                          <div>
-                            <span className="text-xs font-extrabold text-[#2C2623]">ข้อที่ {idx + 1}</span>
-                            <div className="text-xs font-bold text-[#786F68]">ตอบ: {item.chosenNameEn}</div>
+                  <h3 className="text-sm font-extrabold text-[#2C2623]">ผลการทำข้อสอบรายข้อ (คลิกเพื่อขยายดูรายละเอียด):</h3>
+                  <div className="space-y-3">
+                    {latestResultRecord.details?.map((item, idx) => {
+                      const isExpanded = expandedReviewIndex === idx;
+                      return (
+                        <div key={idx} className="border border-[#E6E0D4] rounded-2xl overflow-hidden bg-white transition-all">
+                          <div
+                            onClick={() => setExpandedReviewIndex(isExpanded ? null : idx)}
+                            className={`p-4 cursor-pointer flex items-center justify-between ${
+                              item.isCorrect ? 'bg-[#EBF5EE]' : 'bg-[#FCEEEE]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-extrabold text-white ${
+                                item.isCorrect ? 'bg-[#3B7A57]' : 'bg-[#C94A4A]'
+                              }`}>
+                                {idx + 1}
+                              </span>
+                              <div>
+                                <span className="text-xs font-extrabold text-[#2C2623]">ข้อที่ {idx + 1}</span>
+                                <div className="text-xs font-bold text-[#786F68]">ตอบ: {item.chosenNameEn}</div>
+                              </div>
+                            </div>
+                            <span className={`text-xs font-extrabold px-3 py-1 rounded-full ${
+                              item.isCorrect ? 'bg-[#3B7A57] text-white' : 'bg-[#C94A4A] text-white'
+                            }`}>
+                              {item.isCorrect ? 'ถูกต้อง' : 'ผิด'}
+                            </span>
                           </div>
+
+                          {/* EXPANDED VIEW: MATCHING EXACT QUIZ INTERFACE */}
+                          {isExpanded && (
+                            <div className="p-5 border-t border-[#E6E0D4] bg-[#FAF7F2] space-y-4">
+                              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                                <div className="lg:col-span-6 bg-white border border-[#E6E0D4] rounded-2xl p-4 flex items-center justify-center min-h-[260px]">
+                                  <img src={item.imageUrl} alt="" className="max-h-[240px] object-contain rounded-xl" />
+                                </div>
+                                <div className="lg:col-span-6 bg-white border border-[#E6E0D4] rounded-2xl p-5 space-y-3 flex flex-col justify-between">
+                                  <h4 className="text-sm font-extrabold text-[#2C2623]">
+                                    {latestResultRecord.examMode === 'fill' ? 'พิมพ์ชื่อภาษาอังกฤษของกระดูกในภาพ:' : 'กระดูกส่วนที่ชี้ในภาพคือข้อใด?'}
+                                  </h4>
+
+                                  {latestResultRecord.examMode === 'fill' ? (
+                                    <div className="space-y-3 py-2">
+                                      <div className="p-3 bg-[#FAF7F2] border border-[#E6E0D4] rounded-xl text-xs">
+                                        <b>คำตอบที่คุณพิมพ์:</b> <span className={item.isCorrect ? 'text-[#3B7A57] font-bold' : 'text-[#C94A4A] font-bold'}>{item.chosenNameEn}</span>
+                                      </div>
+                                      <div className="p-3 bg-[#EBF5EE] border border-[#3B7A57] rounded-xl text-xs text-[#3B7A57]">
+                                        <b>คำตอบที่ถูกต้อง:</b> <b>{item.boneNameEn}</b>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-2">
+                                      {item.options?.map((opt, oIdx) => {
+                                        const isChosenUser = opt.nameEn === item.chosenNameEn;
+                                        const isTheCorrectOne = opt.nameEn === item.boneNameEn;
+
+                                        let btnStyle = 'bg-[#FAF7F2] border-[#E6E0D4] text-[#2C2623]';
+                                        if (isTheCorrectOne) {
+                                          btnStyle = 'bg-[#3B7A57] text-white border-[#3B7A57] font-extrabold'; // ถูกต้อง Highlight เขียว
+                                        } else if (isChosenUser && !item.isCorrect) {
+                                          btnStyle = 'bg-[#C94A4A] text-white border-[#C94A4A] font-extrabold'; // ผิด Highlight แดง
+                                        }
+
+                                        return (
+                                          <div
+                                            key={oIdx}
+                                            className={`w-full p-3 rounded-xl border text-left flex items-center gap-3 text-xs ${btnStyle}`}
+                                          >
+                                            <span className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center font-bold">
+                                              {String.fromCharCode(65 + oIdx)}
+                                            </span>
+                                            <span>{opt.nameEn}</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <span className={`text-xs font-extrabold px-3 py-1 rounded-full ${
-                          item.isCorrect ? 'bg-[#3B7A57] text-white' : 'bg-[#C94A4A] text-white'
-                        }`}>
-                          {item.isCorrect ? 'ถูกต้อง' : 'ผิด'}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -989,46 +1065,6 @@ export default function App() {
                   </button>
                 </div>
               </div>
-            </div>
-
-            {/* EXPANDED REVIEW MODAL */}
-            {selectedReviewItem && (
-              <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-                <div className="bg-white border-2 border-[#2C2623] rounded-3xl max-w-lg w-full p-6 space-y-5">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-base font-extrabold">รายละเอียดข้อสอบ</h3>
-                    <button onClick={() => setSelectedReviewItem(null)} className="text-xs font-bold text-[#786F68]">✕ ปิด</button>
-                  </div>
-                  <div className="flex justify-center bg-[#FAF7F2] p-4 rounded-2xl border">
-                    <img src={selectedReviewItem.imageUrl} alt="" className="max-h-56 object-contain rounded-xl" />
-                  </div>
-                  <div className="space-y-2 text-xs">
-                    <div><b>คำตอบที่คุณเลือก:</b> <span className={selectedReviewItem.isCorrect ? 'text-[#3B7A57] font-extrabold' : 'text-[#C94A4A] font-extrabold'}>{selectedReviewItem.chosenNameEn}</span></div>
-                    <div><b>คำตอบที่ถูกต้อง:</b> <span className="text-[#3B7A57] font-extrabold">{selectedReviewItem.boneNameEn}</span></div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {screen === 'history' && (
-          <div className="space-y-6">
-            <button onClick={() => setScreen('home')} className="text-xs font-bold text-[#786F68]">← กลับหน้าหลัก</button>
-            <div className="bg-white border border-[#E6E0D4] rounded-3xl p-6 space-y-4">
-              <h2 className="text-xl font-extrabold">ประวัติคะแนนย้อนหลัง</h2>
-              {scoreHistory.length === 0 ? (
-                <div className="text-center py-12 text-[#786F68]">ยังไม่มีประวัติการทำข้อสอบ</div>
-              ) : (
-                scoreHistory.map((item) => (
-                  <div key={item.id} className="p-4 rounded-2xl bg-[#FAF7F2] border flex justify-between items-center text-xs">
-                    <div>
-                      <span className="font-extrabold">{item.playerName}</span> (หมวด {item.category}) - ครั้งที่ {item.attemptNumber}
-                    </div>
-                    <div className="font-extrabold text-sm">{item.score}/{item.total} ({item.percentage}%)</div>
-                  </div>
-                ))
-              )}
             </div>
           </div>
         )}

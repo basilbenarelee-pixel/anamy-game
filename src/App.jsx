@@ -77,16 +77,16 @@ const BONE_DATA = [
   { id: 'head-15', category: 'Head', num: 15, nameEn: 'Palatine', imageUrl: '/bones/Head/IMG_2270.PNG', viewType: 'head-anterior', svgTarget: 'palatine' },
 
   // --- 2. THORACIC TRUNK (10 items) ---
-  { id: 'thoracic trunk-1', category: 'Thoracic trunk', num: 1, nameEn: 'Sternum', imageUrl: '/bones/Thoracic trunk/IMG_3984.PNG', viewType: 'thoracic trunk', svgTarget: 'sternum' },
-  { id: 'thoracic trunk-2', category: 'Thoracic trunk', num: 2, nameEn: 'Ribs', imageUrl: '/bones/Thoracic trunk/IMG_3986.PNG', viewType: 'thoracic trunk', svgTarget: 'ribs' },
+  { id: 'thoracic trunk-1', category: 'Thoracic trunk', num: 1, nameEn: 'Sacrum', imageUrl: '/bones/Thoracic trunk/IMG_3984.PNG', viewType: 'thoracic trunk', svgTarget: 'sacrum' },
+  { id: 'thoracic trunk-2', category: 'Thoracic trunk', num: 2, nameEn: 'Hip Bone', imageUrl: '/bones/Thoracic trunk/IMG_3986.PNG', viewType: 'thoracic trunk', svgTarget: 'hips' },
   { id: 'thoracic trunk-3', category: 'Thoracic trunk', num: 3, nameEn: 'Clavicles', imageUrl: '/bones/Thoracic trunk/IMG_3987.PNG', viewType: 'thoracic trunk', svgTarget: 'clavicles' },
-  { id: 'thoracic trunk-4', category: 'Thoracic trunk', num: 4, nameEn: 'Hip Bone', imageUrl: '/bones/Thoracic trunk/IMG_3989.PNG', viewType: 'thoracic trunk', svgTarget: 'hips' },
-  { id: 'thoracic trunk-5', category: 'Thoracic trunk', num: 5, nameEn: 'Coccyx', imageUrl: '/bones/Thoracic trunk/IMG_4022.PNG', viewType: 'thoracic trunk', svgTarget: 'coccyx' },
+  { id: 'thoracic trunk-4', category: 'Thoracic trunk', num: 4, nameEn: 'Scapula', imageUrl: '/bones/Thoracic trunk/IMG_3989.PNG', viewType: 'thoracic trunk', svgTarget: 'scapulae' },
+  { id: 'thoracic trunk-5', category: 'Thoracic trunk', num: 5, nameEn: 'Sternum', imageUrl: '/bones/Thoracic trunk/IMG_4022.PNG', viewType: 'thoracic trunk', svgTarget: 'sternum' },
   { id: 'thoracic trunk-6', category: 'Thoracic trunk', num: 6, nameEn: 'Cervical vertebrae', imageUrl: '/bones/Thoracic trunk/IMG_4036.PNG', viewType: 'thoracic trunk', svgTarget: 'cervical' },
   { id: 'thoracic trunk-7', category: 'Thoracic trunk', num: 7, nameEn: 'Thoracic vertebrae', imageUrl: '/bones/Thoracic trunk/IMG_4037.PNG', viewType: 'thoracic trunk', svgTarget: 'thoracic' },
-  { id: 'thoracic trunk-8', category: 'Thoracic trunk', num: 8, nameEn: 'Lumbar vertebrae', imageUrl: '/bones/Thoracic trunk/IMG_4039-8.PNG', viewType: 'thoracic trunk', svgTarget: 'lumbar' },
-  { id: 'thoracic trunk-9', category: 'Thoracic trunk', num: 9, nameEn: 'Sacrum', imageUrl: '/bones/Thoracic trunk/IMG_4041.PNG', viewType: 'thoracic trunk', svgTarget: 'sacrum' },
-  { id: 'thoracic trunk-10', category: 'Thoracic trunk', num: 10, nameEn: 'Scapula', imageUrl: '/bones/Thoracic trunk/IMG_4042.PNG', viewType: 'thoracic trunk', svgTarget: 'scapulae' },
+  { id: 'thoracic trunk-8', category: 'Thoracic trunk', num: 8, nameEn: 'Lumbar vertebrae', imageUrl: '/bones/Thoracic trunk/IMG_4039.PNG', viewType: 'thoracic trunk', svgTarget: 'lumbar' },
+  { id: 'thoracic trunk-9', category: 'Thoracic trunk', num: 9, nameEn: 'Coccyx', imageUrl: '/bones/Thoracic trunk/IMG_4041.PNG', viewType: 'thoracic trunk', svgTarget: 'coccyx' },
+  { id: 'thoracic trunk-10', category: 'Thoracic trunk', num: 10, nameEn: 'Ribs', imageUrl: '/bones/Thoracic trunk/IMG_4042.PNG', viewType: 'thoracic trunk', svgTarget: 'ribs' },
 
   // --- 3. UPPER (15 items) ---
   { id: 'upper-1', category: 'Upper', num: 1, nameEn: 'Humerus', imageUrl: '/bones/Upper/IMG_3990.PNG', viewType: 'upper-arm', svgTarget: 'humerus' },
@@ -131,7 +131,7 @@ const CATEGORIES = [
   { id: 'Lower', nameEn: 'Lower', nameTh: 'รยางค์ส่วนล่าง', icon: Footprints, desc: 'กระดูกต้นขา สะบ้า หน้าแข้ง น่อง ข้อเท้า ฝ่าเท้า และนิ้วเท้า' },
 ];
 
-// Helper for smart grading in fill-in-the-blank
+// Helper for smart grading in fill-in-the-blank (checks exact core bone name inside user input)
 const evaluateFillAnswer = (userAnswer, correctName) => {
   if (!userAnswer) return false;
   const cleanUser = userAnswer.trim().toLowerCase();
@@ -161,7 +161,7 @@ export default function App() {
 
   const [quizPool, setQuizPool] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [questionOptionsMap, setQuestionOptionsMap] = useState({}); // questionIndex -> options array (locked)
+  const [questionOptionsMap, setQuestionOptionsMap] = useState({});
   const [answersMap, setAnswersMap] = useState({});
   const [matchingPairs, setMatchingPairs] = useState({ bones: [], names: [] });
   const [matchingSelectedBone, setMatchingSelectedBone] = useState(null);
@@ -175,7 +175,6 @@ export default function App() {
   const [showUnansweredWarning, setShowUnansweredWarning] = useState(false);
   const [imageLoadFailed, setImageLoadFailed] = useState({});
 
-  // Review expanded state (inline per question index)
   const [expandedReviewIndex, setExpandedReviewIndex] = useState(null);
 
   useEffect(() => {
@@ -231,26 +230,6 @@ export default function App() {
     return () => clearInterval(timer);
   }, [screen, quizStartTime]);
 
-  const generateOptionsForQuestion = (correctBone, qIndex, poolOfBones) => {
-    const wrongCandidates = poolOfBones.filter(
-      (b) => b.id !== correctBone.id
-    );
-    const pool = [...wrongCandidates];
-    for (let i = pool.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
-    const fourChoices = [correctBone, ...pool.slice(0, 3)];
-    for (let i = fourChoices.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [fourChoices[i], fourChoices[j]] = [fourChoices[j], fourChoices[i]];
-    }
-    setQuestionOptionsMap((prev) => ({
-      ...prev,
-      [qIndex]: fourChoices
-    }));
-  };
-
   const handleStartQuizSession = () => {
     const pool = BONE_DATA.filter((b) => quizCategory === 'All' || b.category.trim() === quizCategory.trim());
     for (let i = pool.length - 1; i > 0; i--) {
@@ -266,14 +245,16 @@ export default function App() {
     setQuestionOptionsMap({});
 
     if (examMode === 'matching') {
+      // Create non-matching shuffled name set so items are unique and logical
+      const shuffledNames = [...finalPool].sort(() => 0.5 - Math.random());
       setMatchingPairs({
         bones: [...finalPool],
-        names: [...finalPool].sort(() => 0.5 - Math.random())
+        names: shuffledNames
       });
       setMatchingUserAnswers({});
       setMatchingSelectedBone(null);
     } else if (finalPool.length > 0) {
-      // Pre-generate and lock options for all MCQ questions
+      // Locked random options map per question session
       const newOptsMap = {};
       finalPool.forEach((bone, idx) => {
         const wrongCandidates = finalPool.filter((b) => b.id !== bone.id);
@@ -589,7 +570,7 @@ export default function App() {
               <div className="bg-white border border-[#E6E0D4] rounded-3xl p-6 space-y-6">
                 <div>
                   <h2 className="text-xl font-extrabold text-[#2C2623]">ขั้นตอนที่ 1: เลือกระบบการสอบ</h2>
-                  <p className="text-xs text-[#786F68] mt-1">กรุณาเลือกรูปแบบข้อสอบที่คุณต้องการทดสอบ</p>
+                  <p className="text-xs text-[#786F68] mt-1">กรุณาเลือกรูปแบบข้อสอบที่คุณต้องการทดสอบ (พร้อมไอคอนแสดงตัวอย่าง)</p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -638,7 +619,7 @@ export default function App() {
                     <div className="w-full h-28 rounded-xl bg-[#F3EFE6] flex items-center justify-center overflow-hidden border border-[#E6E0D4]">
                       <div className="flex gap-2 w-3/4 justify-center items-center">
                         <div className="w-8 h-8 rounded-lg bg-[#3B7A57]"></div>
-                        <div className="w-4 h-0.5 bg-[#2C2623] dashed"></div>
+                        <div className="w-4 h-0.5 bg-[#2C2623]"></div>
                         <div className="w-8 h-8 rounded-lg bg-[#C86D51]"></div>
                       </div>
                     </div>
@@ -802,7 +783,16 @@ export default function App() {
                             isSelected ? 'border-[#C86D51] bg-[#FAF7F2]' : hasAnswered ? 'border-[#3B7A57] bg-[#EBF5EE]' : 'border-[#E6E0D4] bg-white'
                           }`}
                         >
-                          <img src={bone.imageUrl} alt="" className="w-16 h-16 object-contain rounded-xl bg-[#FAF7F2]" />
+                          {!imageLoadFailed[bone.id] ? (
+                            <img 
+                              src={bone.imageUrl} 
+                              alt="" 
+                              className="w-16 h-16 object-contain rounded-xl bg-[#FAF7F2]" 
+                              onError={() => setImageLoadFailed(prev => ({ ...prev, [bone.id]: true }))}
+                            />
+                          ) : (
+                            <div className="w-16 h-16 rounded-xl bg-[#F3EFE6] flex items-center justify-center text-[10px] text-[#786F68]">ไม่มีรูป</div>
+                          )}
                           <div>
                             <span className="text-xs font-extrabold">ข้อที่ {bone.num}</span>
                             <div className="text-xs font-bold text-[#3B7A57]">
@@ -852,100 +842,103 @@ export default function App() {
                 </button>
               </div>
             ) : (
-              currentQuizBone && (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                  <div className="lg:col-span-6 bg-white border border-[#E6E0D4] rounded-3xl p-5 flex items-center justify-center min-h-[340px]">
-                    {currentQuizBone.imageUrl && !imageLoadFailed[currentQuizBone.id] ? (
-                      <img
-                        src={currentQuizBone.imageUrl}
-                        alt={`Question ${currentQuizBone.num}`}
-                        className="max-h-[320px] w-auto object-contain rounded-2xl"
-                        onError={() =>
-                          setImageLoadFailed((prev) => ({ ...prev, [currentQuizBone.id]: true }))
-                        }
-                      />
-                    ) : (
-                      <div className="text-xs text-[#786F68]">ไม่พบรูปภาพ</div>
-                    )}
-                  </div>
-
-                  <div className="lg:col-span-6 bg-white border border-[#E6E0D4] rounded-3xl p-6 space-y-4 flex flex-col justify-between">
-                    <div className="space-y-4">
-                      <h2 className="text-lg font-extrabold text-[#2C2623]">
-                        {examMode === 'fill' ? 'พิมพ์ชื่อภาษาอังกฤษของกระดูกในภาพ:' : 'กระดูกส่วนที่ชี้ในภาพคือข้อใด?'}
-                      </h2>
-
-                      {examMode === 'mcq' ? (
-                        <div className="space-y-3">
-                          {options.map((option, idx) => {
-                            const isSelected = answersMap[currentIndex]?.id === option.id;
-                            return (
-                              <button
-                                key={option.id}
-                                onClick={() => handleSelectOption(option)}
-                                className={`w-full p-4 rounded-2xl border text-left flex items-center gap-3 transition-all ${
-                                  isSelected 
-                                    ? 'bg-[#2C2623] text-white border-[#2C2623] shadow-md' 
-                                    : 'bg-[#FAF7F2] hover:bg-[#F3EFE6] border-[#E6E0D4]'
-                                }`}
-                              >
-                                <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-extrabold ${
-                                  isSelected ? 'bg-[#C86D51] text-white' : 'bg-white text-[#C86D51]'
-                                }`}>
-                                  {String.fromCharCode(65 + idx)}
-                                </span>
-                                <span className="font-bold text-base">{option.nameEn}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
+              currentQuizBone && (() => {
+                const options = questionOptionsMap[currentIndex] || [];
+                return (
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <div className="lg:col-span-6 bg-white border border-[#E6E0D4] rounded-3xl p-5 flex items-center justify-center min-h-[340px]">
+                      {currentQuizBone.imageUrl && !imageLoadFailed[currentQuizBone.id] ? (
+                        <img
+                          src={currentQuizBone.imageUrl}
+                          alt={`Question ${currentQuizBone.num}`}
+                          className="max-h-[320px] w-auto object-contain rounded-2xl"
+                          onError={() =>
+                            setImageLoadFailed((prev) => ({ ...prev, [currentQuizBone.id]: true }))
+                          }
+                        />
                       ) : (
-                        <div className="space-y-4 py-4">
-                          <input
-                            type="text"
-                            value={answersMap[currentIndex] || ''}
-                            onChange={(e) => handleFillInput(e.target.value)}
-                            placeholder="ตอบเป็นภาษาอังกฤษ"
-                            className="w-full bg-[#FAF7F2] border border-[#E6E0D4] rounded-2xl px-4 py-3.5 text-base font-bold text-[#2C2623] focus:outline-none focus:border-[#C86D51]"
-                          />
-                        </div>
+                        <div className="text-xs text-[#786F68]">ไม่พบรูปภาพ</div>
                       )}
                     </div>
 
-                    {/* NAVIGATION BUTTONS */}
-                    <div className="flex gap-3 pt-4 border-t border-[#E6E0D4]">
-                      <button
-                        disabled={currentIndex === 0}
-                        onClick={() => handleJumpToQuestion(currentIndex - 1)}
-                        className={`flex-1 py-3.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1 ${
-                          currentIndex === 0 ? 'bg-[#FAF7F2] text-[#A89F96] cursor-not-allowed' : 'bg-[#F3EFE6] text-[#2C2623]'
-                        }`}
-                      >
-                        <ChevronLeft className="w-4 h-4" />
-                        <span>ข้อก่อนหน้า</span>
-                      </button>
+                    <div className="lg:col-span-6 bg-white border border-[#E6E0D4] rounded-3xl p-6 space-y-4 flex flex-col justify-between">
+                      <div className="space-y-4">
+                        <h2 className="text-lg font-extrabold text-[#2C2623]">
+                          {examMode === 'fill' ? 'พิมพ์ชื่อภาษาอังกฤษของกระดูกในภาพ:' : 'กระดูกส่วนที่ชี้ในภาพคือข้อใด?'}
+                        </h2>
 
-                      {currentIndex + 1 < quizPool.length ? (
+                        {examMode === 'mcq' ? (
+                          <div className="space-y-3">
+                            {options.map((option, idx) => {
+                              const isSelected = answersMap[currentIndex]?.id === option.id;
+                              return (
+                                <button
+                                  key={option.id}
+                                  onClick={() => handleSelectOption(option)}
+                                  className={`w-full p-4 rounded-2xl border text-left flex items-center gap-3 transition-all ${
+                                    isSelected 
+                                      ? 'bg-[#2C2623] text-white border-[#2C2623] shadow-md' 
+                                      : 'bg-[#FAF7F2] hover:bg-[#F3EFE6] border-[#E6E0D4]'
+                                  }`}
+                                >
+                                  <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-extrabold ${
+                                    isSelected ? 'bg-[#C86D51] text-white' : 'bg-white text-[#C86D51]'
+                                  }`}>
+                                    {String.fromCharCode(65 + idx)}
+                                  </span>
+                                  <span className="font-bold text-base">{option.nameEn}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="space-y-4 py-4">
+                            <input
+                              type="text"
+                              value={answersMap[currentIndex] || ''}
+                              onChange={(e) => handleFillInput(e.target.value)}
+                              placeholder="ตอบเป็นภาษาอังกฤษ"
+                              className="w-full bg-[#FAF7F2] border border-[#E6E0D4] rounded-2xl px-4 py-3.5 text-base font-bold text-[#2C2623] focus:outline-none focus:border-[#C86D51]"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* NAVIGATION BUTTONS */}
+                      <div className="flex gap-3 pt-4 border-t border-[#E6E0D4]">
                         <button
-                          onClick={() => handleJumpToQuestion(currentIndex + 1)}
-                          className="flex-1 py-3.5 rounded-xl bg-[#C86D51] text-white font-extrabold text-xs flex items-center justify-center gap-1"
+                          disabled={currentIndex === 0}
+                          onClick={() => handleJumpToQuestion(currentIndex - 1)}
+                          className={`flex-1 py-3.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1 ${
+                            currentIndex === 0 ? 'bg-[#FAF7F2] text-[#A89F96] cursor-not-allowed' : 'bg-[#F3EFE6] text-[#2C2623]'
+                          }`}
                         >
-                          <span>ข้อถัดไป</span>
-                          <ChevronRight className="w-4 h-4" />
+                          <ChevronLeft className="w-4 h-4" />
+                          <span>ข้อก่อนหน้า</span>
                         </button>
-                      ) : (
-                        <button
-                          onClick={checkUnansweredAndFinish}
-                          className="flex-1 py-3.5 rounded-xl bg-[#3B7A57] text-white font-extrabold text-xs flex items-center justify-center gap-1"
-                        >
-                          <Check className="w-4 h-4" />
-                          <span>ส่งข้อสอบทั้งหมด</span>
-                        </button>
-                      )}
+
+                        {currentIndex + 1 < quizPool.length ? (
+                          <button
+                            onClick={() => handleJumpToQuestion(currentIndex + 1)}
+                            className="flex-1 py-3.5 rounded-xl bg-[#C86D51] text-white font-extrabold text-xs flex items-center justify-center gap-1"
+                          >
+                            <span>ข้อถัดไป</span>
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={checkUnansweredAndFinish}
+                            className="flex-1 py-3.5 rounded-xl bg-[#3B7A57] text-white font-extrabold text-xs flex items-center justify-center gap-1"
+                          >
+                            <Check className="w-4 h-4" />
+                            <span>ส่งข้อสอบทั้งหมด</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )
+                );
+              })()
             )}
           </div>
         )}
@@ -1003,7 +996,7 @@ export default function App() {
                             <div className="p-5 border-t border-[#E6E0D4] bg-[#FAF7F2] space-y-4">
                               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                                 <div className="lg:col-span-6 bg-white border border-[#E6E0D4] rounded-2xl p-4 flex items-center justify-center min-h-[260px]">
-                                  <img src={item.imageUrl} alt="" className="max-h-[240px] object-contain rounded-xl" />
+                                  <img src={item.imageUrl} alt="" className="max-h-[240px] object-contain rounded-xl" onError={(e) => { e.target.style.display = 'none'; }} />
                                 </div>
                                 <div className="lg:col-span-6 bg-white border border-[#E6E0D4] rounded-2xl p-5 space-y-3 flex flex-col justify-between">
                                   <h4 className="text-sm font-extrabold text-[#2C2623]">

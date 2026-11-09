@@ -84,16 +84,16 @@ const BONE_DATA = [
   { id: 'head-15', category: 'Head', num: 15, nameEn: 'Palatine', imageUrl: '/bones/Head/IMG_2270.PNG' },
 
   // --- 2. THORACIC TRUNK (10 items) ---
-  { id: 'thoracic trunk-1', category: 'Thoracic trunk', num: 1, nameEn: 'Sternum', imageUrl: '/bones/Thoracic trunk/IMG_3984.PNG' },
-  { id: 'thoracic trunk-2', category: 'Thoracic trunk', num: 2, nameEn: 'Ribs', imageUrl: '/bones/Thoracic trunk/IMG_3986.PNG' },
-  { id: 'thoracic trunk-3', category: 'Thoracic trunk', num: 3, nameEn: 'Clavicles', imageUrl: '/bones/Thoracic trunk/IMG_3987.PNG' },
-  { id: 'thoracic trunk-4', category: 'Thoracic trunk', num: 4, nameEn: 'Hip Bone', imageUrl: '/bones/Thoracic trunk/IMG_3989.PNG' },
-  { id: 'thoracic trunk-5', category: 'Thoracic trunk', num: 5, nameEn: 'Coccyx', imageUrl: '/bones/Thoracic trunk/IMG_4022.PNG' },
+  { id: 'thoracic trunk-1', category: 'Thoracic trunk', num: 1, nameEn: 'Sacrum', imageUrl: '/bones/Thoracic trunk/IMG_3984.PNG' },
+  { id: 'thoracic trunk-2', category: 'Thoracic trunk', num: 2, nameEn: 'Hip Bone', imageUrl: '/bones/Thoracic trunk/IMG_3986.PNG' },
+  { id: 'thoracic trunk-3', category: 'Thoracic trunk', num: 3, nameEn: 'Clavicle', imageUrl: '/bones/Thoracic trunk/IMG_3987.PNG' },
+  { id: 'thoracic trunk-4', category: 'Thoracic trunk', num: 4, nameEn: 'Scapula', imageUrl: '/bones/Thoracic trunk/IMG_3989.PNG' },
+  { id: 'thoracic trunk-5', category: 'Thoracic trunk', num: 5, nameEn: 'Sternum', imageUrl: '/bones/Thoracic trunk/IMG_4022.PNG' },
   { id: 'thoracic trunk-6', category: 'Thoracic trunk', num: 6, nameEn: 'Cervical vertebrae', imageUrl: '/bones/Thoracic trunk/IMG_4036.JPG' },
   { id: 'thoracic trunk-7', category: 'Thoracic trunk', num: 7, nameEn: 'Thoracic vertebrae', imageUrl: '/bones/Thoracic trunk/IMG_4037.JPG' },
   { id: 'thoracic trunk-8', category: 'Thoracic trunk', num: 8, nameEn: 'Lumbar vertebrae', imageUrl: '/bones/Thoracic trunk/IMG_4039.JPG' },
-  { id: 'thoracic trunk-9', category: 'Thoracic trunk', num: 9, nameEn: 'Sacrum', imageUrl: '/bones/Thoracic trunk/IMG_4041.JPG' },
-  { id: 'thoracic trunk-10', category: 'Thoracic trunk', num: 10, nameEn: 'Scapula', imageUrl: '/bones/Thoracic trunk/IMG_4042.JPG' },
+  { id: 'thoracic trunk-9', category: 'Thoracic trunk', num: 9, nameEn: 'Coccyx', imageUrl: '/bones/Thoracic trunk/IMG_4041.JPG' },
+  { id: 'thoracic trunk-10', category: 'Thoracic trunk', num: 10, nameEn: 'Ribs', imageUrl: '/bones/Thoracic trunk/IMG_4042.JPG' },
 
   // --- 3. UPPER (15 items) ---
   { id: 'upper-1', category: 'Upper', num: 1, nameEn: 'Humerus', imageUrl: '/bones/Upper/IMG_3990.PNG' },
@@ -120,12 +120,12 @@ const BONE_DATA = [
   { id: 'lower-5', category: 'Lower', num: 5, nameEn: 'Lateral cuneiform', imageUrl: '/bones/Lower/IMG_4015.PNG' },
   { id: 'lower-6', category: 'Lower', num: 6, nameEn: 'Intermediate cuneiform', imageUrl: '/bones/Lower/IMG_4016.PNG' },
   { id: 'lower-7', category: 'Lower', num: 7, nameEn: 'Medial cuneiform', imageUrl: '/bones/Lower/IMG_4017.PNG' },
-  { id: 'lower-8', category: 'Lower', num: 8, nameEn: 'Metatarsals', imageUrl: '/bones/Lower/IMG_4018.PNG' },
+  { id: 'lower-8', category: 'Lower', num: 8, nameEn: 'Metatarsal', imageUrl: '/bones/Lower/IMG_4018.PNG' },
   { id: 'lower-9', category: 'Lower', num: 9, nameEn: 'Proximal phalanx', imageUrl: '/bones/Lower/IMG_4019.PNG' },
   { id: 'lower-10', category: 'Lower', num: 10, nameEn: 'Distal phalanx', imageUrl: '/bones/Lower/IMG_4020.PNG' },
   { id: 'lower-11', category: 'Lower', num: 11, nameEn: 'Middle phalanges', imageUrl: '/bones/Lower/IMG_4021.PNG' },
   { id: 'lower-12', category: 'Lower', num: 12, nameEn: 'Femur', imageUrl: '/bones/Lower/IMG_4031.PNG' },
-  { id: 'lower-13', category: 'Lower', num: 13, nameEn: 'Patellae', imageUrl: '/bones/Lower/IMG_4032.PNG' },
+  { id: 'lower-13', category: 'Lower', num: 13, nameEn: 'Patella', imageUrl: '/bones/Lower/IMG_4032.PNG' },
   { id: 'lower-14', category: 'Lower', num: 14, nameEn: 'Tibia', imageUrl: '/bones/Lower/IMG_4033.PNG' },
   { id: 'lower-15', category: 'Lower', num: 15, nameEn: 'Fibula', imageUrl: '/bones/Lower/IMG_4034.PNG' }
 ];

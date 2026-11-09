@@ -1724,7 +1724,7 @@ export default function App() {
                     }`}>
                       <div className="space-y-3 sm:space-y-4">
                         <h2 className={`text-base sm:text-lg font-extrabold ${darkMode ? 'text-white' : 'text-[#2C2623]'}`}>
-                          {examMode === 'fill' ? 'พิมพ์ชื่อภาษาอังกฤษของกระดูกในภาพ:' : 'กระดูกส่วนที่ไฮไลท์สีเหลืองในภาพคือข้อใด?'}
+                          {examMode === 'fill' ? 'พิมพ์ชื่อภาษาอังกฤษของกระดูกในภาพ:' : 'กระดูกส่วนที่ไฮไลท์ในภาพคือข้อใด?'}
                         </h2>
 
                         {examMode === 'mcq' ? (
@@ -2014,7 +2014,7 @@ export default function App() {
                                     darkMode ? 'bg-[#181615] border-[#38332E]' : 'bg-white border-[#E6E0D4]'
                                   }`}>
                                     <h4 className={`text-sm font-extrabold ${darkMode ? 'text-white' : 'text-[#2C2623]'}`}>
-                                      {latestResultRecord.examMode === 'fill' ? 'พิมพ์ชื่อภาษาอังกฤษของกระดูกในภาพ:' : 'กระดูกส่วนที่ไฮไลท์สีเหลืองในภาพคือข้อใด?'}
+                                      {latestResultRecord.examMode === 'fill' ? 'พิมพ์ชื่อภาษาอังกฤษของกระดูกในภาพ:' : 'กระดูกส่วนที่ไฮไลท์ในภาพคือข้อใด?'}
                                     </h4>
 
                                     {latestResultRecord.examMode === 'fill' ? (

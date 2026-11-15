@@ -257,13 +257,122 @@ class SoundFX {
   }
 }
 
+// ==========================================
+// FLEXIBLE FILL-IN ANSWER EVALUATOR
+// ==========================================
+const GENERIC_ANATOMY_SUFFIXES = new Set([
+  'vertebrae', 'vertebra', 'bone', 'bones', 'phalanx', 'phalanges', 
+  'cuneiform', 'cuniform', 'cuneform', 'concha', 'turbinate'
+]);
+
+const WORD_VARIATION_GROUPS = [
+  ['lacrimal', 'lacimal'],
+  ['occipital', 'ocipital'],
+  ['palatine', 'palatin'],
+  ['ethmoid', 'etmoid'],
+  ['maxilla', 'maxila', 'maxillar'],
+  ['coccyx', 'cocyx'],
+  ['metacarpal', 'metacapal'],
+  ['trapezium', 'trapzium'],
+  ['trapezoid', 'trapzoid'],
+  ['capitate', 'capitat'],
+  ['hamate', 'hamat'],
+  ['lunate', 'lunat'],
+  ['triquetrum', 'tiquetrum', 'tiquetum', 'triqetrum', 'triqetum'],
+  ['calcaneus', 'calcanus', 'calcanes', 'calcane'],
+  ['navicular', 'navicula'],
+  ['intermediate', 'intermidiat', 'intermidiate'],
+  ['metatarsal', 'metatasal'],
+  ['patella', 'patela', 'patellar', 'patellae'],
+  ['cuneiform', 'cuniform', 'cuneform']
+];
+
+const getWordVariants = (word) => {
+  const variants = new Set([word]);
+
+  // Basic singular/plural stripping
+  if (word.length > 4 && word.endsWith('es')) variants.add(word.slice(0, -2));
+  if (word.length > 3 && word.endsWith('s') && !word.endsWith('ss') && !word.endsWith('us') && !word.endsWith('is')) {
+    variants.add(word.slice(0, -1));
+  }
+
+  // Words ending with 'r' can omit trailing 'r' (e.g., navicular -> navicula)
+  if (word.endsWith('r') && word.length > 3) {
+    variants.add(word.slice(0, -1));
+  }
+  // Words ending with 'a' can have trailing 'r' added (e.g., patella -> patellar, ulna -> ulnar)
+  if (word.endsWith('a') && word.length > 2) {
+    variants.add(word + 'r');
+  }
+
+  // Match against custom accepted spelling groups
+  for (const group of WORD_VARIATION_GROUPS) {
+    if (group.includes(word)) {
+      group.forEach((v) => variants.add(v));
+    }
+  }
+
+  return variants;
+};
+
+const wordsAreEquivalent = (uWord, cWord) => {
+  if (uWord === cWord) return true;
+  const uVars = getWordVariants(uWord);
+  const cVars = getWordVariants(cWord);
+  for (const v of uVars) {
+    if (cVars.has(v)) return true;
+  }
+  return false;
+};
+
 const evaluateFillAnswer = (userAnswer, correctName) => {
   if (!userAnswer) return false;
-  const cleanUser = userAnswer.trim().toLowerCase();
-  const cleanCorrect = correctName.trim().toLowerCase();
+
+  const normalize = (str) =>
+    str
+      .toLowerCase()
+      .replace(/[().,\-_/]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const cleanUser = normalize(userAnswer);
+  const cleanCorrect = normalize(correctName);
+
+  if (!cleanUser) return false;
   if (cleanUser === cleanCorrect) return true;
-  const regex = new RegExp(`\\b${cleanCorrect}\\b`, 'i');
-  return regex.test(cleanUser);
+
+  const userWords = cleanUser.split(' ');
+  const correctWords = cleanCorrect.split(' ');
+
+  // 1. Full phrase word-by-word flexible match (supports cuneform/cuniform, -r/-a, plurals, and custom typos)
+  if (userWords.length === correctWords.length) {
+    const allMatch = userWords.every((uW, idx) => wordsAreEquivalent(uW, correctWords[idx]));
+    if (allMatch) return true;
+  }
+
+  // 2. Distinctive Keyword Match for multi-word anatomical names
+  // Example: "Intermediate cuneform", "Intermediate", "Intermidiat", "Concha", "Lumbar"
+  if (correctWords.length > 1) {
+    const distinctiveCorrectWords = correctWords.filter(
+      (w) => w.length >= 3 && !GENERIC_ANATOMY_SUFFIXES.has(w)
+    );
+
+    if (distinctiveCorrectWords.length > 0) {
+      const allUserWordsValid = userWords.every((uWord) =>
+        correctWords.some((cWord) => wordsAreEquivalent(uWord, cWord))
+      );
+
+      const hasDistinctiveMatch = distinctiveCorrectWords.some((dWord) =>
+        userWords.some((uWord) => wordsAreEquivalent(uWord, dWord))
+      );
+
+      if (allUserWordsValid && hasDistinctiveMatch) {
+        return true;
+      }
+    }
+  }
+
+  return false;
 };
 
 // ==========================================
@@ -364,16 +473,35 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  // ==========================================
+  // STRICT PER-ACCOUNT SCORE HISTORY ISOLATION
+  // ==========================================
   useEffect(() => {
+    // Clear history immediately when user signs out or switches accounts
+    if (!user) {
+      setScoreHistory([]);
+      setSelectedHistoryDetail(null);
+      return;
+    }
+
     const historyRef = collection(db, 'artifacts', appId, 'public', 'data', 'anamy_score_history');
     const unsub = onSnapshot(historyRef, (snapshot) => {
       const records = [];
-      snapshot.forEach((docSnap) => records.push(docSnap.data()));
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        // Filter strictly by current authenticated user's UID or verified email
+        const isOwnerByUid = data.uid && user.uid && data.uid === user.uid;
+        const isOwnerByEmail = data.userEmail && user.email && data.userEmail.toLowerCase() === user.email.toLowerCase();
+
+        if (isOwnerByUid || isOwnerByEmail) {
+          records.push(data);
+        }
+      });
       records.sort((a, b) => (b.createdAtMs || 0) - (a.createdAtMs || 0));
       setScoreHistory(records);
     });
     return () => unsub();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (playerName.trim()) setNameInputError(false);
@@ -406,6 +534,8 @@ export default function App() {
     try {
       await signOut(auth);
       setUser(null);
+      setScoreHistory([]);
+      setSelectedHistoryDetail(null);
       setShowSignOutModal(false);
       setScreen('home');
     } catch (err) {
@@ -737,8 +867,9 @@ export default function App() {
     const totalCount = quizPool.length;
     const percentage = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0;
 
+    // Only count previous attempts belonging to the current user's session/account
     const previousAttempts = scoreHistory.filter(
-      (h) => (h.userEmail && user?.email ? h.userEmail === user.email : h.playerName.toLowerCase() === activeUser.toLowerCase()) && h.category === quizCategory
+      (h) => h.category === quizCategory
     );
 
     const attemptNumber = previousAttempts.length + 1;
@@ -754,7 +885,7 @@ export default function App() {
     const record = {
       id: recordId,
       createdAtMs,
-      uid: user?.uid || 'authenticated',
+      uid: user?.uid || '',
       userEmail: user?.email || '',
       avatarId: customAvatar,
       playerName: activeUser,
@@ -782,7 +913,6 @@ export default function App() {
     } catch (err) {
       console.error("Auto Save Failed:", err);
     }
-    setScoreHistory((prev) => [record, ...prev]);
   };
 
   const handleJumpToQuestion = (idx) => {
@@ -896,9 +1026,9 @@ export default function App() {
               <Lock className="w-7 h-7 text-[#C86D51]" />
             </div>
             <div className="text-center space-y-2">
-              <h3 className={`text-lg font-extrabold ${darkMode ? 'text-white' : 'text-[#2C2623]'}`}>กรุณาเข้าสู่ระบบก่อนทำแบบทดสอบ</h3>
+              <h3 className={`text-lg font-extrabold ${darkMode ? 'text-white' : 'text-[#2C2623]'}`}>กรุณาเข้าสู่ระบบก่อนใช้งาน</h3>
               <p className="text-xs text-[#9E948A] leading-relaxed">
-                ระบบบังคับให้เข้าสู่ระบบผ่าน Google เพื่อบันทึกประวัติคะแนนอย่างแม่นยำ ป้องกันการสวมรอย และใช้ตรวจสอบผลสอบ
+                ระบบจะแยกประวัติคะแนนของแต่ละบัญชีอย่างเป็นส่วนตัว กรุณาล็อกอินด้วย Google เพื่อเริ่มทำแบบทดสอบและดูผลคะแนนของคุณ
               </p>
             </div>
             <div className="space-y-2 pt-2">
@@ -1142,6 +1272,10 @@ export default function App() {
                 onMouseEnter={() => SoundFX.hover()}
                 onClick={() => {
                   SoundFX.select();
+                  if (!user) {
+                    setShowLoginPromptModal(true);
+                    return;
+                  }
                   setSelectedHomeMenu(selectedHomeMenu === 'history' ? null : 'history');
                 }}
                 className={`rounded-3xl p-6 text-left border-2 transition-all flex items-start gap-4 hover:-translate-y-1 active:translate-y-0 shadow-sm cursor-pointer ${
@@ -1157,7 +1291,9 @@ export default function App() {
                 </div>
                 <div>
                   <h3 className={`text-lg font-extrabold ${darkMode ? 'text-white' : 'text-[#2C2623]'}`}>ประวัติคะแนนย้อนหลัง</h3>
-                  <p className="text-xs text-[#9E948A]">ตรวจสอบคะแนนทุกรอบ และคลิกดูข้อสอบพร้อมรูปภาพ</p>
+                  <p className="text-xs text-[#9E948A]">
+                    {user ? 'ดูคะแนนเฉพาะบัญชีของคุณ และตรวจสอบเฉลยรายข้อ' : 'ล็อกอินเพื่อดูประวัติคะแนนส่วนตัว'}
+                  </p>
                 </div>
               </button>
             </div>
@@ -1724,7 +1860,7 @@ export default function App() {
                     }`}>
                       <div className="space-y-3 sm:space-y-4">
                         <h2 className={`text-base sm:text-lg font-extrabold ${darkMode ? 'text-white' : 'text-[#2C2623]'}`}>
-                          {examMode === 'fill' ? 'พิมพ์ชื่อภาษาอังกฤษของกระดูกในภาพ:' : 'กระดูกส่วนที่ไฮไลท์ในภาพคือข้อใด?'}
+                          {examMode === 'fill' ? 'พิมพ์ชื่อภาษาอังกฤษของกระดูกในภาพ:' : 'กระดูกส่วนที่ชี้ในภาพคือข้อใด?'}
                         </h2>
 
                         {examMode === 'mcq' ? (
@@ -1753,7 +1889,7 @@ export default function App() {
                             })}
                           </div>
                         ) : (
-                          <div className="space-y-3 sm:space-y-4 py-2 sm:py-4">
+                          <div className="space-y-2.5 sm:space-y-3 py-2 sm:py-4">
                             <input
                               type="text"
                               value={answersMap[currentIndex] || ''}
@@ -1838,7 +1974,7 @@ export default function App() {
                   <div>
                     <h2 className="text-base font-extrabold">สรุปผลการทดสอบ (Score Summary)</h2>
                     <p className="text-[11px] text-[#10B981] font-bold">
-                      ✓ บันทึกผลคะแนนลงระบบประวัติเรียบร้อยแล้ว
+                      ✓ บันทึกผลคะแนนลงประวัติส่วนตัวของคุณเรียบร้อยแล้ว
                     </p>
                   </div>
                   <span className="px-3 py-1 bg-[#C86D51] rounded-full text-xs font-bold">
@@ -2014,7 +2150,7 @@ export default function App() {
                                     darkMode ? 'bg-[#181615] border-[#38332E]' : 'bg-white border-[#E6E0D4]'
                                   }`}>
                                     <h4 className={`text-sm font-extrabold ${darkMode ? 'text-white' : 'text-[#2C2623]'}`}>
-                                      {latestResultRecord.examMode === 'fill' ? 'พิมพ์ชื่อภาษาอังกฤษของกระดูกในภาพ:' : 'กระดูกส่วนที่ไฮไลท์ในภาพคือข้อใด?'}
+                                      {latestResultRecord.examMode === 'fill' ? 'พิมพ์ชื่อภาษาอังกฤษของกระดูกในภาพ:' : 'กระดูกส่วนที่ชี้ในภาพคือข้อใด?'}
                                     </h4>
 
                                     {latestResultRecord.examMode === 'fill' ? (
@@ -2078,13 +2214,15 @@ export default function App() {
           );
         })()}
 
-        {/* HISTORY SCREEN WITH DEEP QUESTION INSPECTION */}
+        {/* HISTORY SCREEN WITH STRICT ACCOUNT SESSION ISOLATION */}
         {screen === 'history' && (
           <div className="max-w-3xl mx-auto space-y-6">
             <div className="flex justify-between items-center">
               <div>
-                <h2 className={`text-xl font-extrabold ${darkMode ? 'text-white' : 'text-[#2C2623]'}`}>ประวัติคะแนนที่บันทึกไว้</h2>
-                <p className="text-xs text-[#9E948A]">คลิกรายการใดก็ได้เพื่อดูรูปภาพและรายละเอียดเฉลยทุกข้อ</p>
+                <h2 className={`text-xl font-extrabold ${darkMode ? 'text-white' : 'text-[#2C2623]'}`}>ประวัติคะแนนของฉัน</h2>
+                <p className="text-xs text-[#9E948A]">
+                  แสดงข้อมูลเฉพาะบัญชี: <span className="font-bold text-[#C86D51]">{user?.email || 'ยังไม่ได้เข้าสู่ระบบ'}</span>
+                </p>
               </div>
               <button
                 onClick={() => { SoundFX.click(); setScreen('home'); }}
@@ -2094,7 +2232,25 @@ export default function App() {
               </button>
             </div>
 
-            {scoreHistory.length === 0 ? (
+            {!user ? (
+              <div className={`border rounded-3xl p-8 text-center space-y-4 ${
+                darkMode ? 'bg-[#1A1816] border-[#2C2723]' : 'bg-white border-[#E6E0D4]'
+              }`}>
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto ${
+                  darkMode ? 'bg-[#292522] text-[#C86D51]' : 'bg-[#F3EFE6] text-[#C86D51]'
+                }`}>
+                  <Lock className="w-6 h-6" />
+                </div>
+                <div className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-[#2C2623]'}`}>กรุณาเข้าสู่ระบบเพื่อดูประวัติคะแนนส่วนตัว</div>
+                <p className="text-xs text-[#9E948A]">ระบบแยกประวัติการสอบของแต่ละบัญชีออกจากกัน เพื่อความเป็นส่วนตัวและความถูกต้องของข้อมูล</p>
+                <button
+                  onClick={handleGoogleSignIn}
+                  className="px-6 py-3 rounded-xl bg-[#C86D51] text-white text-xs font-extrabold shadow-xs hover:bg-[#b05b41] transition-all cursor-pointer"
+                >
+                  เข้าสู่ระบบด้วย Google
+                </button>
+              </div>
+            ) : scoreHistory.length === 0 ? (
               <div className={`border rounded-3xl p-8 text-center space-y-3 ${
                 darkMode ? 'bg-[#1A1816] border-[#2C2723]' : 'bg-white border-[#E6E0D4]'
               }`}>
@@ -2103,8 +2259,8 @@ export default function App() {
                 }`}>
                   <History className="w-6 h-6" />
                 </div>
-                <div className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-[#2C2623]'}`}>ยังไม่มีประวัติคะแนนในระบบ</div>
-                <p className="text-xs text-[#9E948A]">เมื่อทำข้อสอบจบ ระบบจะบันทึกผลและรายละเอียดทั้งหมดมาแสดงที่นี่โดยอัตโนมัติ</p>
+                <div className={`text-sm font-bold ${darkMode ? 'text-white' : 'text-[#2C2623]'}`}>ยังไม่มีประวัติคะแนนในบัญชีนี้</div>
+                <p className="text-xs text-[#9E948A]">เมื่อคุณทำแบบทดสอบจบ ระบบจะบันทึกผลสอบส่วนตัวของคุณไว้ที่นี่โดยอัตโนมัติ</p>
               </div>
             ) : (
               <div className="space-y-3">

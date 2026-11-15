@@ -99,10 +99,10 @@ const BONE_DATA = [
   { id: 'upper-1', category: 'Upper', num: 1, nameEn: 'Humerus', imageUrl: '/bones/Upper/IMG_3990.PNG' },
   { id: 'upper-2', category: 'Upper', num: 2, nameEn: 'Radius', imageUrl: '/bones/Upper/IMG_3991.PNG' },
   { id: 'upper-3', category: 'Upper', num: 3, nameEn: 'Ulna', imageUrl: '/bones/Upper/IMG_3992.PNG' },
-  { id: 'upper-4', category: 'Upper', num: 4, nameEn: 'Metacarpal', imageUrl: '/bones/Upper/IMG_4001.PNG' },
-  { id: 'upper-5', category: 'Upper', num: 5, nameEn: 'Proximal phalanx', imageUrl: '/bones/Upper/IMG_4002.PNG' },
-  { id: 'upper-6', category: 'Upper', num: 6, nameEn: 'Middle phalanx', imageUrl: '/bones/Upper/IMG_4003.PNG' },
-  { id: 'upper-7', category: 'Upper', num: 7, nameEn: 'Distal phalanx', imageUrl: '/bones/Upper/IMG_4005.PNG' },
+  { id: 'upper-4', category: 'Upper', num: 4, nameEn: 'Metacarpal', imageUrl: '/bones/Upper/IMG_4001.png' },
+  { id: 'upper-5', category: 'Upper', num: 5, nameEn: 'Proximal phalanx', imageUrl: '/bones/Upper/IMG_4002.png' },
+  { id: 'upper-6', category: 'Upper', num: 6, nameEn: 'Middle phalanx', imageUrl: '/bones/Upper/IMG_4003.png' },
+  { id: 'upper-7', category: 'Upper', num: 7, nameEn: 'Distal phalanx', imageUrl: '/bones/Upper/IMG_4005.png' },
   { id: 'upper-8', category: 'Upper', num: 8, nameEn: 'Trapezium', imageUrl: '/bones/Upper/IMG_4023.PNG' },
   { id: 'upper-9', category: 'Upper', num: 9, nameEn: 'Trapezoid', imageUrl: '/bones/Upper/IMG_4024.PNG' },
   { id: 'upper-10', category: 'Upper', num: 10, nameEn: 'Capitate', imageUrl: '/bones/Upper/IMG_4025.PNG' },
@@ -179,13 +179,27 @@ const AVATAR_OPTIONS = [
 
 const handleSafeImageFallback = (e, originalUrl) => {
   if (!e || !e.target) return;
-  const currentSrc = e.target.src || '';
-  if (currentSrc.includes('.JPG')) {
-    e.target.src = originalUrl.replace('.JPG', '.PNG');
-  } else if (currentSrc.includes('.PNG')) {
-    e.target.src = originalUrl.replace('.PNG', '.JPG');
-  } else if (currentSrc.includes('/Thoracic%20trunk/')) {
-    e.target.src = originalUrl.replace('/Thoracic trunk/', '/thoracic trunk/');
+  const target = e.target;
+  const attempt = Number(target.dataset.fallbackAttempt || '0');
+
+  if (attempt === 0) {
+    target.dataset.fallbackAttempt = '1';
+    if (originalUrl.endsWith('.JPG')) {
+      target.src = originalUrl.replace('.JPG', '.PNG');
+    } else if (originalUrl.endsWith('.PNG')) {
+      target.src = originalUrl.replace('.PNG', '.JPG');
+    } else if (originalUrl.endsWith('.jpg')) {
+      target.src = originalUrl.replace('.jpg', '.png');
+    } else if (originalUrl.endsWith('.png')) {
+      target.src = originalUrl.replace('.png', '.jpg');
+    }
+  } else if (attempt === 1) {
+    target.dataset.fallbackAttempt = '2';
+    if (originalUrl.includes('/Thoracic trunk/')) {
+      target.src = originalUrl.replace('/Thoracic trunk/', '/thoracic trunk/');
+    } else {
+      target.dataset.fallbackAttempt = '3';
+    }
   }
 };
 
@@ -1701,12 +1715,12 @@ export default function App() {
                                   alt={`Bone ${bone.num}`}
                                   className="max-h-full max-w-full object-contain"
                                   onError={(e) => {
-                                    handleSafeImageFallback(e, bone.imageUrl);
-                                    setTimeout(() => {
-                                      if (e.target.naturalWidth === 0) {
-                                        setImageLoadFailed(prev => ({ ...prev, [bone.id]: true }));
-                                      }
-                                    }, 200);
+                                    const attempt = Number(e.target.dataset.fallbackAttempt || '0');
+                                    if (attempt < 2) {
+                                      handleSafeImageFallback(e, bone.imageUrl);
+                                    } else {
+                                      setImageLoadFailed(prev => ({ ...prev, [bone.id]: true }));
+                                    }
                                   }}
                                 />
                               ) : (
@@ -1842,12 +1856,12 @@ export default function App() {
                           alt={`Question ${currentQuizBone.num}`}
                           className="max-h-[240px] sm:max-h-[320px] w-auto object-contain rounded-xl sm:rounded-2xl"
                           onError={(e) => {
-                            handleSafeImageFallback(e, currentQuizBone.imageUrl);
-                            setTimeout(() => {
-                              if (e.target.naturalWidth === 0) {
-                                setImageLoadFailed((prev) => ({ ...prev, [currentQuizBone.id]: true }));
-                              }
-                            }, 200);
+                            const attempt = Number(e.target.dataset.fallbackAttempt || '0');
+                            if (attempt < 2) {
+                              handleSafeImageFallback(e, currentQuizBone.imageUrl);
+                            } else {
+                              setImageLoadFailed((prev) => ({ ...prev, [currentQuizBone.id]: true }));
+                            }
                           }}
                         />
                       ) : (

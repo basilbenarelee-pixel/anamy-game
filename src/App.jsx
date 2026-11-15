@@ -184,21 +184,30 @@ const handleSafeImageFallback = (e, originalUrl) => {
 
   if (attempt === 0) {
     target.dataset.fallbackAttempt = '1';
-    if (originalUrl.endsWith('.JPG')) {
-      target.src = originalUrl.replace('.JPG', '.PNG');
+    // Try flipping extension case first (e.g., .png -> .PNG or .PNG -> .png)
+    if (originalUrl.endsWith('.png')) {
+      target.src = originalUrl.replace('.png', '.PNG');
     } else if (originalUrl.endsWith('.PNG')) {
-      target.src = originalUrl.replace('.PNG', '.JPG');
+      target.src = originalUrl.replace('.PNG', '.png');
     } else if (originalUrl.endsWith('.jpg')) {
-      target.src = originalUrl.replace('.jpg', '.png');
-    } else if (originalUrl.endsWith('.png')) {
-      target.src = originalUrl.replace('.png', '.jpg');
+      target.src = originalUrl.replace('.jpg', '.JPG');
+    } else if (originalUrl.endsWith('.JPG')) {
+      target.src = originalUrl.replace('.JPG', '.jpg');
     }
   } else if (attempt === 1) {
     target.dataset.fallbackAttempt = '2';
+    // Try switching between JPG and PNG formats
+    if (/\.JPG$/i.test(originalUrl)) {
+      target.src = originalUrl.replace(/\.JPG$/i, '.PNG');
+    } else if (/\.PNG$/i.test(originalUrl)) {
+      target.src = originalUrl.replace(/\.PNG$/i, '.JPG');
+    }
+  } else if (attempt === 2) {
+    target.dataset.fallbackAttempt = '3';
     if (originalUrl.includes('/Thoracic trunk/')) {
       target.src = originalUrl.replace('/Thoracic trunk/', '/thoracic trunk/');
     } else {
-      target.dataset.fallbackAttempt = '3';
+      target.dataset.fallbackAttempt = '4';
     }
   }
 };
@@ -447,6 +456,7 @@ export default function App() {
   const [showEarlyExitModal, setShowEarlyExitModal] = useState(false);
   const [showUnansweredWarning, setShowUnansweredWarning] = useState(false);
   const [imageLoadFailed, setImageLoadFailed] = useState({});
+  const [preloadedImages, setPreloadedImages] = useState({});
 
   const [expandedReviewIndex, setExpandedReviewIndex] = useState(null);
   const [selectedHistoryDetail, setSelectedHistoryDetail] = useState(null);
@@ -621,6 +631,46 @@ export default function App() {
     return () => clearInterval(timer);
   }, [screen, quizStartTime]);
 
+  // ==========================================
+  // PRELOAD ALL QUIZ IMAGES INTO BROWSER CACHE
+  // ==========================================
+  useEffect(() => {
+    if (screen !== 'quiz-play' || quizPool.length === 0) return;
+
+    let isCancelled = false;
+    quizPool.forEach((bone) => {
+      if (!bone.imageUrl) return;
+      const img = new Image();
+      img.onload = () => {
+        if (!isCancelled) {
+          setPreloadedImages((prev) => ({ ...prev, [bone.id]: true }));
+        }
+      };
+      img.onerror = () => {
+        // Try fallback case/extension during preload so cached variant is ready
+        const fallbackUrl = bone.imageUrl.endsWith('.png')
+          ? bone.imageUrl.replace('.png', '.PNG')
+          : bone.imageUrl.endsWith('.PNG')
+          ? bone.imageUrl.replace('.PNG', '.png')
+          : bone.imageUrl.endsWith('.JPG')
+          ? bone.imageUrl.replace('.JPG', '.PNG')
+          : bone.imageUrl.replace('.PNG', '.JPG');
+        const fallbackImg = new Image();
+        fallbackImg.onload = () => {
+          if (!isCancelled) {
+            setPreloadedImages((prev) => ({ ...prev, [bone.id]: true }));
+          }
+        };
+        fallbackImg.src = fallbackUrl;
+      };
+      img.src = bone.imageUrl;
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [screen, quizPool]);
+
   const handleStartQuizSession = () => {
     SoundFX.click();
     if (!user) {
@@ -671,6 +721,8 @@ export default function App() {
 
     setShowEarlyExitModal(false);
     setShowUnansweredWarning(false);
+    setImageLoadFailed({});
+    setPreloadedImages({});
     setQuizStartTime(Date.now());
     setElapsedSeconds(0);
     setScreen('quiz-play');
@@ -1847,17 +1899,20 @@ export default function App() {
                 const options = questionOptionsMap[currentIndex] || [];
                 return (
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
-                    <div className={`lg:col-span-6 border rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex items-center justify-center min-h-[260px] sm:min-h-[340px] shadow-xs ${
+                    <div className={`lg:col-span-6 border rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex items-center justify-center min-h-[260px] sm:min-h-[340px] shadow-xs relative ${
                       darkMode ? 'bg-[#1A1816] border-[#2C2723]' : 'bg-white border-[#E6E0D4]'
                     }`}>
                       {currentQuizBone.imageUrl && !imageLoadFailed[currentQuizBone.id] ? (
                         <img
+                          key={currentQuizBone.id}
                           src={currentQuizBone.imageUrl}
                           alt={`Question ${currentQuizBone.num}`}
-                          className="max-h-[240px] sm:max-h-[320px] w-auto object-contain rounded-xl sm:rounded-2xl"
+                          decoding="async"
+                          fetchPriority="high"
+                          className="max-h-[240px] sm:max-h-[320px] w-auto object-contain rounded-xl sm:rounded-2xl transition-opacity duration-150"
                           onError={(e) => {
                             const attempt = Number(e.target.dataset.fallbackAttempt || '0');
-                            if (attempt < 2) {
+                            if (attempt < 3) {
                               handleSafeImageFallback(e, currentQuizBone.imageUrl);
                             } else {
                               setImageLoadFailed((prev) => ({ ...prev, [currentQuizBone.id]: true }));
